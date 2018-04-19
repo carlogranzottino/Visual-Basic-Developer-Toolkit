@@ -435,7 +435,7 @@ Function Levenshtein(s1 As String, s2 As String) As Integer
     'Credit to user smirkingman
     
     Dim i As Integer, _
-        j As Integer
+        j As Integer, _
         len1 As Integer, _
         len2 As Integer, _
         d() As Integer, _
