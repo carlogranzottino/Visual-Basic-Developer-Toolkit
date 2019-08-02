@@ -10,7 +10,7 @@ Option Explicit
 ''
 ''          ~Created by David Wilson | Any code adapted from other sources is credited in the respective procedure
 ''
-''          ~Last updated: 04/16/2018
+''          ~Last updated: 03/26/2019
 ''
 ''      --------------------------------------------------------------------------''
 ''
@@ -35,6 +35,8 @@ Option Explicit
 ''          ColorIndexToRGB
 ''          SortData
 ''          Levenshtein
+''          ShowLabelNames
+''          ReadTextFile
 ''
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
@@ -94,7 +96,7 @@ Function FindFullRange(ThisWorksheet As Worksheet, Optional ByRef LastRow As Dou
             LastColumn = .Cells.Find(What:="*", after:=.Range("A1"), LookAt:=xlWhole, SearchOrder:=xlByColumns, SearchDirection:=xlPrevious, MatchCase:=False).Column
         End If
         '''''
-        Set FindFullRange = .Range(.Cells(1, 1), .Cells(LastRow, LastColumn))
+        Set FindFullRange = .Range(.Cells(1, 1), .Cells(lastRow, LastColumn))
     End With
 
 End Function
@@ -102,25 +104,25 @@ End Function
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 'procedure(s): ImportFileData; IsFileOpen
-'used for: bookending modules for performance optimization purposes
+'used for: Importing Excel file data from a worksheet in another workbook; it is returned at a two-dimensional array.  
 'calls other XDW tools: yes - ImportFileData requires IsFileOpen for validation
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-Function ImportFileData(FilePath As String, sheetName As String, keepImportFileOpen As Boolean) As Variant
+Function ImportFileData(filepath As String, sheetName As String, keepImportFileOpen As Boolean) As Variant
     
     Dim wb As Workbook
     Dim alreadyOpen As Boolean
     ''''''
-    If Len(Dir(FilePath)) < 1 Then
-        MsgBox "The file expected at: '" & FilePath & "' could not be found.  Please ensure that the file is saved to this location and try again."
+    If Len(Dir(filepath)) < 1 Then
+        MsgBox "The file expected at: '" & filepath & "' could not be found.  Please ensure that the file is saved to this location and try again."
         EndWrapper
         End
     End If
     ''''''
     DoEvents
     ''''''
-    alreadyOpen = IsFileOpen(FilePath)
+    alreadyOpen = IsFileOpen(filepath)
     ''''''
-    Set wb = Workbooks.Open(FilePath, ReadOnly:=True)
+    Set wb = Workbooks.Open(filepath, ReadOnly:=True)
     ImportFileData = FindFullRange(wb.Sheets(sheetName))
     If keepImportFileOpen = False And alreadyOpen = True Then wb.Close
     
@@ -241,7 +243,7 @@ End Function
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 'procedure(s): TrapTrim
-'used for: trimming imported data that may contain error values or data mismatches -- typically this is from sheets the whole team uses or workday
+'used for: trimming imported data that may contain error values or data mismatches -- typically this is from sheets used by a number of users or external systems
 'calls other XDW tools: no
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 Function TrapTrim(ByVal inputValue As Variant, errorValue As String, Optional makeLowerCase As Boolean) As String
@@ -272,7 +274,7 @@ End Function
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 Function ReturnColumnLetter(ByVal columnNumber As Double) As String
 
-    ReturnColumnLetter = split(Cells(, columnNumber).Address, "$")(1)
+    ReturnColumnLetter = Split(Cells(, columnNumber).Address, "$")(1)
     
 End Function
 
@@ -311,26 +313,6 @@ End Function
 '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-'procedure(s): ToggleLabelNames
-'used for: toggling on/off the visibility of worksheet range labels for the user
-'calls other XDW tools: no
-'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-Sub ToggleLabelNames(ShowNames As Boolean)
-
-    Dim labelName As Name
-    
-    For Each labelName In ThisWorkbook.Names
-        If ShowNames = False Then
-            If labelName.Visible = True Then labelName.Visible = False
-        Else
-            If labelName.Visible = False Then labelName.Visible = True
-        End If
-    Next labelName
-
-End Sub
-'~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 'procedure(s): SheetExists
 'used for: verifying if worksheet exists in a given workbook
 'calls other XDW tools: no
@@ -348,7 +330,7 @@ Function SheetExists(shtName As String, Optional wb As Workbook) As Boolean
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 'procedure(s): LogTime
-'used for: create time log for testing run time duration of procedures
+'used for: create time log for testing the run time duration of procedures
 'calls other XDW tools: no
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 Function LogTime(ByRef startTime As Double, TaskName As String) As Double
@@ -364,13 +346,13 @@ End Function
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 'procedure(s): ColorIndexToRGB
-'used for: Convert a given cell's color index (found via property ".color.interior" to RBG to be applied to other Excel objects
+'used for: Convert a given cell's color index (found via property ".color.interior") to RBG to be applied to other Excel objects
 'calls other XDW tools: no
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-Sub ColorIndexToRGB(ByRef ColorIndex As Variant, ByRef R As Variant, ByRef G As Variant, ByRef b As Variant)
+Sub ColorIndexToRGB(ByRef ColorIndex As Variant, ByRef R As Variant, ByRef G As Variant, ByRef B As Variant)
     R = ColorIndex Mod 256
     G = ColorIndex \ 256 Mod 256
-    b = ColorIndex \ 65536 Mod 256
+    B = ColorIndex \ 65536 Mod 256
 End Sub
 '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -379,17 +361,17 @@ End Sub
 'used for: Sorting a worksheet table
 'calls other XDW tools: yes - FindFullRange() is used to find last row and column if not specified for user; ReturnColumnLetter() is used to convert the column number to letter
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-Sub SortData(SortSheet As Worksheet, SortColumnLetter As String, SortMethod As String, Optional HasHeader As Boolean = True, Optional ByVal LastRow As Double = -9999, Optional ByVal LastColumn As Double = -9999)
+Sub SortData(SortSheet As Worksheet, SortColumnLetter As String, SortMethod As String, Optional HasHeader As Boolean = True, Optional ByVal lastRow As Double = -9999, Optional ByVal LastColumn As Double = -9999)
     'SORT METHODS CAN BE EITHER "asc","ascending","desc", or "descending"; they are not case sensitive
         
         Dim startRow As Double
         Dim ynHeader As Variant
         Dim sortOrder As Variant
         
-        If (LastRow = -9999) And (LastColumn = -9999) Then
-                FindFullRange SortSheet, LastRow, LastColumn
-        ElseIf (LastRow = -9999) Then
-                FindFullRange SortSheet, LastRow
+        If (lastRow = -9999) And (LastColumn = -9999) Then
+            FindFullRange SortSheet, lastRow, LastColumn
+        ElseIf (lastRow = -9999) Then
+            FindFullRange SortSheet, lastRow
         ElseIf (LastColumn = -9999) Then
             FindFullRange SortSheet, , LastColumn
         End If
@@ -408,13 +390,13 @@ Sub SortData(SortSheet As Worksheet, SortColumnLetter As String, SortMethod As S
             Case "DESC", "DESCENDING"
                 sortOrder = xlDescending
             Case Else
-                Debug.Print "NO CORRECT SORT TYPE COULD BE FOUND.  ERROR WILLB BE THROWN."
+                Debug.Print "NO CORRECT SORT TYPE COULD BE FOUND. ERROR WILL BE THROWN."
         End Select
         
         With SortSheet.Sort
                 .SortFields.Clear
-                .SortFields.Add key:=SortSheet.Range(SortColumnLetter & startRow & ":" & SortColumnLetter & LastRow), SortOn:=xlSortOnValues, Order:=sortOrder, DataOption:=xlSortNormal
-                .SetRange SortSheet.Range("A1:" & ReturnColumnLetter(LastColumn) & LastRow)
+                .SortFields.Add key:=SortSheet.Range(SortColumnLetter & startRow & ":" & SortColumnLetter & lastRow), SortOn:=xlSortOnValues, Order:=sortOrder, DataOption:=xlSortNormal
+                .SetRange SortSheet.Range("A1:" & ReturnColumnLetter(LastColumn) & lastRow)
                 .Header = ynHeader
                 .MatchCase = False
                 .Orientation = xlTopToBottom
@@ -430,9 +412,8 @@ End Sub
 'calls other XDW tools: no
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 Function Levenshtein(s1 As String, s2 As String) As Integer
-    'this code was adapted from a post on StackOverflow
+    'this code was adapted from a post on StackOverflow from user "smirkingman"
     'URL: https://stackoverflow.com/questions/4243036/levenshtein-distance-in-vba/6423088
-    'Credit to user smirkingman
     
     Dim i As Integer, _
         j As Integer, _
@@ -471,6 +452,83 @@ Function Levenshtein(s1 As String, s2 As String) As Integer
     Next
     Levenshtein = d(len1, len2)
 End Function
+'~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'procedure(s): ShowLabelNames
+'used for: procedure used toggle a given workbooks label names between not visible and visible; used to hide named ranges from non-dev users
+'calls other XDW tools: no
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+Sub ShowLabelNames(ShowNames As Boolean)
+
+    Dim cellName As Name
+    
+    For Each cellName In ThisWorkbook.Names
+        If ShowNames = False Then
+            If cellName.Visible = True Then cellName.Visible = False
+        Else
+            If cellName.Visible = False Then cellName.Visible = True
+        End If
+    Next cellName
+
+End Sub
+'~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'procedure(s): ReadTextFile
+'used for: reading the contexts of a text file into an array
+'calls other XDW tools: no
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Function ReadTextFile(filepath As String, DELIMITER As String) As Variant
+    'Credit: this code was adapted from a page on TheSpreadsheetGuru
+    'URL: https://www.thespreadsheetguru.com/blog/vba-guide-text-files
+
+    Dim textFile As Integer
+    
+    Dim fileContent As String
+    Dim lineArr() As String
+    Dim wordArr() As String
+    Dim dataArray() As Variant
+    
+    Dim x As Long
+    Dim y As Long
+    
+         
+    'Open the text file in a Read State
+    textFile = FreeFile
+    Open filepath For Input As textFile
+    
+    fileContent = Input(LOF(textFile), textFile)
+    Close textFile
+      
+    'Separate Out lines of data
+    lineArr = Split(fileContent, vbCrLf)
+    wordArr = Split(lineArr(LBound(lineArr)), vbTab)
+    ReDim dataArray(UBound(lineArr), UBound(wordArr))
+    
+    'Read Data into an Array Variable
+    For x = LBound(lineArr) To UBound(lineArr)
+        If Len(Trim(lineArr(x))) <> 0 Then
+            'Split up line of text by delimiter
+            wordArr = Split(lineArr(x), vbTab)
+            
+            'Load line of data into Array variable
+            For y = LBound(wordArr) To UBound(wordArr)
+              dataArray(x, y) = Trim(wordArr(y))
+            Next y
+        End If
+    Next x
+
+    ReadTextFile = dataArray
+
+End Function
+
+
+
+
+
+
 
 
 '-----------------------End Toolbox-----------------------
